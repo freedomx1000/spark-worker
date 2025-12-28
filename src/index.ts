@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 import pLimit from 'p-limit';
 import logger from './utils/logger';
-import { getPendingJobs, markJobRunning, markJobDelivered, markJobFailed, SparkJobRow, supabase } from './services/supabase'
+import { getPendingJobs, markJobRunning, markJobDelivered, markJobFailed, SparkuploadMp4AndGetPublicUrl, JobRow, supabase } from './services/supabase'
 import { generatePlaceholderMp4 } from './services/videoGenerator';
 
 dotenv.config();
@@ -77,9 +77,14 @@ async function processJob(job: SparkJobRow) {
       // Generate placeholder MP4 (2 seconds)
       const videoPath = await generatePlaceholderMp4(job.id);
       logger.info(`[Job ${job.id}] Video generated at ${videoPath}`);
+      
+        // REMESA 18.7: Upload MP4 to Supabase Storage and get public URL
+        logger.info(`[Job ${job.id}] Uploading video to Supabase Storage...`);
+        const publicUrl = await uploadMp4AndGetPublicUrl(videoPath, job.id);
+        logger.info(`[Job ${job.id}] Video uploaded. Public URL: ${publicUrl}`);
 
       // Mark as delivered with real video URL
-      await markJobDelivered(job.id, videoPath, 'dry_run');      logger.info(`[Job ${job.id}] ✅ DRY RUN completed with real video`);
+      await markJobDelivered(job.id, publicUrl, 'dry_run');      logger.info(`[Job ${job.id}] ✅ DRY RUN completed with real video`);
     } else {
       // Real mode: would call actual video generation APIs
       logger.info(`[Job ${job.id}] REAL MODE - Calling video generation APIs`);
