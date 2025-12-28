@@ -1,8 +1,7 @@
 import dotenv from 'dotenv';
 import pLimit from 'p-limit';
 import logger from './utils/logger';
-import { getPendingJobs, markJobRunning, markJobDelivered, markJobFailed, SparkuploadMp4AndGetPublicUrl, JobRow, supabase } from './services/supabase'
-import { generatePlaceholderMp4 } from './services/videoGenerator';
+import { getPendingJobs, markJobRunning, markJobDelivered, markJobFailed, uploadMp4AndGetPublicUrl, SparkJobRow, supabase } from './services/supabase'import { generatePlaceholderMp4 } from './services/videoGenerator';
 
 dotenv.config();
 
