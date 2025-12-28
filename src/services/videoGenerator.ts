@@ -1,56 +1,63 @@
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import fs from "node:fs";
 import path from "node:path";
-
-const execFileAsync = promisify(execFile);
+import { spawn } from "node:child_process";
 
 export async function generatePlaceholderMp4(jobId: string): Promise<string> {
-  console.log(`[generatePlaceholderMp4] Starting video generation for job ${jobId}`);
-  
-  const dir = path.join("/tmp", "spark", jobId);
-  fs.mkdirSync(dir, { recursive: true });
-  console.log(`[generatePlaceholderMp4] Created directory: ${dir}`);
+  const outDir = path.join("/tmp", "spark", jobId);
+  const outPath = path.join(outDir, "final.mp4");
 
-  const outPath = path.join(dir, "final.mp4");
-  console.log(`[generatePlaceholderMp4] Output path: ${outPath}`);
+  fs.mkdirSync(outDir, { recursive: true });
 
+  // Placeholder robusto sin fonts/drawtext
+  // 2s, 1920x1080, 30fps, H.264, yuv420p, faststart
   const args = [
     "-y",
-    "-f", "lavfi",
-    "-i", "color=c=black:s=1920x1080:d=2:r=30",
-    "-c:v", "libx264",
-    "-pix_fmt", "yuv420p",
-    outPath
+    "-hide_banner",
+    "-loglevel",
+    "error",
+    "-f",
+    "lavfi",
+    "-i",
+    "color=c=black:s=1920x1080:r=30:d=2",
+    "-vf",
+    "format=yuv420p",
+    "-c:v",
+    "libx264",
+    "-pix_fmt",
+    "yuv420p",
+    "-movflags",
+    "+faststart",
+    outPath,
   ];
 
-  console.log(`[generatePlaceholderMp4] Executing FFmpeg with args:`, args);
+  await new Promise<void>((resolve, reject) => {
+    const proc = spawn("ffmpeg", args, { stdio: ["ignore", "pipe", "pipe"] });
 
-  try {
-    const { stdout, stderr } = await execFileAsync("ffmpeg", args, { timeout: 300_000 });    console.log(`[generatePlaceholderMp4] FFmpeg stdout:`, stdout);
-    if (stderr) {
-      console.log(`[generatePlaceholderMp4] FFmpeg stderr:`, stderr);
-    }
-  } catch (err: any) {
-    const isTimeout = err?.killed || err?.signal === 'SIGTERM' || (err?.message || '').includes('timeout');
-    const msg = isTimeout ? 'FFMPEG_TIMEOUT: Process exceeded 300s (5 minutes) limit' : (err?.stderr || err?.message || String(err));
-    console.error(`[generatePlaceholderMp4] FFmpeg execution failed:`, msg);
-    throw new Error(`FFMPEG_FAILED: ${msg}`);
-  }
+    let stderr = "";
+    proc.stderr.on("data", (d) => (stderr += d.toString()));
 
+    const timeout = setTimeout(() => {
+      proc.kill("SIGKILL");
+      reject(new Error(`FFmpeg timeout after 300s. Stderr:\n${stderr}`));
+    }, 300_000);
+
+    proc.on("close", (code) => {
+      clearTimeout(timeout);
+      if (code !== 0) {
+        return reject(new Error(`FFmpeg exited with code ${code}. Stderr:\n${stderr}`));
+      }
+      resolve();
+    });
+  });
+
+  // Validación fuerte
   if (!fs.existsSync(outPath)) {
-    console.error(`[generatePlaceholderMp4] Output file does not exist: ${outPath}`);
-    throw new Error(`FFMPEG_FAILED: output file not created`);
+    throw new Error(`FFmpeg did not create output file: ${outPath}`);
+  }
+  const stat = fs.statSync(outPath);
+  if (stat.size < 1000) {
+    throw new Error(`FFmpeg output too small (${stat.size} bytes): ${outPath}`);
   }
 
-  const stats = fs.statSync(outPath);
-  console.log(`[generatePlaceholderMp4] Output file size: ${stats.size} bytes`);
-  
-  if (stats.size <= 1000) {
-    console.error(`[generatePlaceholderMp4] Output file too small: ${stats.size} bytes`);
-    throw new Error(`FFMPEG_FAILED: output file too small (${stats.size} bytes)`);
-  }
-
-  console.log(`[generatePlaceholderMp4] Video generation completed successfully: ${outPath}`);
   return outPath;
 }
