@@ -17,9 +17,6 @@ RUN npm ci
 # Copy source code
 COPY src ./src
 
-# Build TypeScript
-RUN npm run build
-
 # Expose port (optional, for health checks)
 EXPOSE 3000
 
