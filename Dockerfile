@@ -17,8 +17,11 @@ RUN npm install
 # Copy source code
 COPY src ./src
 
+# Build TypeScript to JavaScript
+RUN npm run build
+
 # Expose port (optional, for health checks)
 EXPOSE 3000
 
 # Start the worker
-CMD ["npm", "run", "dev"]
+CMD ["node", "dist/index.js"]
