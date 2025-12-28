@@ -32,8 +32,8 @@ export async function generatePlaceholderMp4(jobId: string): Promise<string> {
       console.log(`[generatePlaceholderMp4] FFmpeg stderr:`, stderr);
     }
   } catch (err: any) {
-    // Check for timeout   const isTimeout = err?.killed || err?.signal === 'SIGTERM' || (err?.message || '').includes('timeout');
-    const msg = isTimeout ? 'FFMPEG_TIMEOUT: Process exceeded 30s limit' : (err?.stderr || err?.message || String(err));
+    const isTimeout = err?.killed || err?.signal === 'SIGTERM' || (err?.message || '').includes('timeout');
+    const msg = isTimeout ? 'FFMPEG_TIMEOUT: Process exceeded 300s (5 minutes) limit' : (err?.stderr || err?.message || String(err));
     console.error(`[generatePlaceholderMp4] FFmpeg execution failed:`, msg);
     throw new Error(`FFMPEG_FAILED: ${msg}`);
   }
