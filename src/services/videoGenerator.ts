@@ -6,12 +6,15 @@ import path from "node:path";
 const execFileAsync = promisify(execFile);
 
 export async function generatePlaceholderMp4(jobId: string): Promise<string> {
-  const tmpDir = path.join(process.cwd(), "tmp");
-  if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
+  console.log(`[generatePlaceholderMp4] Starting video generation for job ${jobId}`);
+  
+  const dir = path.join("/tmp", "spark", jobId);
+  fs.mkdirSync(dir, { recursive: true });
+  console.log(`[generatePlaceholderMp4] Created directory: ${dir}`);
 
-  const outPath = path.join(tmpDir, `${jobId}.mp4`);
+  const outPath = path.join(dir, "final.mp4");
+  console.log(`[generatePlaceholderMp4] Output path: ${outPath}`);
 
-  // 2s, 1080p, 30fps, fondo negro + texto centrado
   const args = [
     "-y",
     "-f", "lavfi",
@@ -23,12 +26,33 @@ export async function generatePlaceholderMp4(jobId: string): Promise<string> {
     outPath
   ];
 
+  console.log(`[generatePlaceholderMp4] Executing FFmpeg with args:`, args);
+
   try {
-    await execFileAsync("ffmpeg", args, { timeout: 60_000 });
+    const { stdout, stderr } = await execFileAsync("ffmpeg", args, { timeout: 60_000 });
+    console.log(`[generatePlaceholderMp4] FFmpeg stdout:`, stdout);
+    if (stderr) {
+      console.log(`[generatePlaceholderMp4] FFmpeg stderr:`, stderr);
+    }
   } catch (err: any) {
     const msg = err?.stderr || err?.message || String(err);
+    console.error(`[generatePlaceholderMp4] FFmpeg execution failed:`, msg);
     throw new Error(`FFMPEG_FAILED: ${msg}`);
   }
 
+  if (!fs.existsSync(outPath)) {
+    console.error(`[generatePlaceholderMp4] Output file does not exist: ${outPath}`);
+    throw new Error(`FFMPEG_FAILED: output file not created`);
+  }
+
+  const stats = fs.statSync(outPath);
+  console.log(`[generatePlaceholderMp4] Output file size: ${stats.size} bytes`);
+  
+  if (stats.size <= 1000) {
+    console.error(`[generatePlaceholderMp4] Output file too small: ${stats.size} bytes`);
+    throw new Error(`FFMPEG_FAILED: output file too small (${stats.size} bytes)`);
+  }
+
+  console.log(`[generatePlaceholderMp4] Video generation completed successfully: ${outPath}`);
   return outPath;
 }
