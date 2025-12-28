@@ -5,8 +5,7 @@
   "main": "dist/index.js",
   "scripts": {
     "start": "node dist/index.js",
-    "dev": "ts-node src/index.ts",
-    "build": "tsc",
+    "dev": "tsx watch src/index.ts",    "build": "tsc",
     "watch": "tsc -w"
   },
   "keywords": ["video", "generation", "ai360plus", "spark", "ffmpeg"],
@@ -25,6 +24,7 @@
     "@types/fluent-ffmpeg": "^2.1.24",
     "@types/node": "^20.10.6",
     "ts-node": "^10.9.2",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3,
+    "tsx": "^4.7.0""
   }
 }
