@@ -95,6 +95,7 @@ export async function uploadFinalMp4(jobId: string, filePath: string): Promise<s
   if (!data?.publicUrl) throw new Error("PUBLIC_URL_MISSING");
 
   return data.publicUrl;
+  }
 
   export async function uploadFileAndGetPublicUrl(params: {
   bucket: string;
