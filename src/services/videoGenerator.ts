@@ -27,8 +27,7 @@ export async function generatePlaceholderMp4(jobId: string): Promise<string> {
   console.log(`[generatePlaceholderMp4] Executing FFmpeg with args:`, args);
 
   try {
-    const { stdout, stderr } = await execFileAsync("ffmpeg", args, { timeou30_000 });
-    console.log(`[generatePlaceholderMp4] FFmpeg stdout:`, stdout);
+    const { stdout, stderr } = await execFileAsync("ffmpeg", args, { timeout: 30_000 });    console.log(`[generatePlaceholderMp4] FFmpeg stdout:`, stdout);
     if (stderr) {
       console.log(`[generatePlaceholderMp4] FFmpeg stderr:`, stderr);
     }
