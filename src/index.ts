@@ -44,6 +44,12 @@ async function processJob(job: SparkJob) {
     }
   } catch (error: any) {
     logger.error(`[Job ${job.id}] ❌ Failed:`, error.message);
+      logger.error(`[Job ${job.id}] Error stack:`, error.stack);
+      logger.error(`[Job ${job.id}] Error cause:`, error.cause || 'No cause');
+      
+      // Save error to database
+      const errorMessage = error.message + (error.stack ? `\n${error.stack}` : '') + (error.cause ? `\nCause: ${error.cause}` : '');
+      await supabase.from('spark_jobs').update({ last_error: errorMessage }).eq('id', job.id);
     await markJobFailed(job.id, error.message);
   } finally {
     activeJobs--;
@@ -70,6 +76,8 @@ async function workerLoop() {
       await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL));
     } catch (error: any) {
       logger.error('Worker loop error:', error.message);
+      logger.error('Worker loop error stack:', error.stack);
+      logger.error('Worker loop error cause:', error.cause || 'No cause');
       await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL));
     }
   }
@@ -78,5 +86,7 @@ async function workerLoop() {
 // Start the worker
 workerLoop().catch((error) => {
   logger.error('Fatal error:', error);
+  logger.error('Fatal error stack:', error.stack);
+  logger.error('Fatal error cause:', error.cause || 'No cause');
   process.exit(1);
 });
