@@ -19,8 +19,6 @@ export async function generatePlaceholderMp4(jobId: string): Promise<string> {
     "-y",
     "-f", "lavfi",
     "-i", "color=c=black:s=1920x1080:d=2:r=30",
-    "-vf",
-    "drawtext=fontcolor=white:fontsize=64:text='AI360Plus Spark':x=(w-text_w)/2:y=(h-text_h)/2",
     "-c:v", "libx264",
     "-pix_fmt", "yuv420p",
     outPath
