@@ -7,7 +7,7 @@ const SUPABASE_BUCKET = process.env.SUPABASE_BUCKET || "public-assets";
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-exporexport type SparkJobRow = {
+export type SparkJobRow = {
   id: string;
   status: "queued" | "running" | "delivered" | "failed";
   pack_id: string | null;
