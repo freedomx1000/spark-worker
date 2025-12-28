@@ -1,88 +1,94 @@
-import { createClient } from '@supabase/supabase-js';
-import logger from '../utils/logger';
+import { createClient } from "@supabase/supabase-js";
+import fs from "node:fs";
 
-const supabaseUrl = process.env.SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_KEY!;
+const SUPABASE_URL = process.env.SUPABASE_URL!;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const SUPABASE_BUCKET = process.env.SUPABASE_BUCKET || "public-assets";
 
-if (!supabaseUrl || !supabaseKey) {
-  throw new Error('Missing SUPABASE_URL or SUPABASE_KEY environment variables');
-}
+export const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
-
-export interface SparkJob {
+export type SparkJobRow = {
   id: string;
-  created_at: string;
-  status: 'queued' | 'running' | 'delivered' | 'failed';
-  activation_id: string | null;
-  org_id: string | null;
-  pack_id: string | null;
-  prompt: string | null;
-  clips: any;
-  music_url: string | null;
-  final_url: string | null;
-  error: string | null;
+  status: "queued" | "running" | "delivered" | "failed";
+  pack: string | null;
+  priority: string | null;
+  spec: any;
+  result_url?: string | null;
+  started_at?: string | null;
+  finished_at?: string | null;
+  provider_used?: string | null;
+  error?: string | null;
+};
+
+export async function getPendingJobs(limit = 10): Promise<SparkJobRow[]> {
+  const { data, error } = await supabase
+    .from("spark_jobs")
+    .select("*")
+    .eq("status", "queued")
+    .order("priority", { ascending: true })
+    .limit(limit);
+
+  if (error) throw error;
+  return (data || []) as SparkJobRow[];
 }
 
-// Get pending jobs (status = 'queued')
-export async function getPendingJobs(limit = 10): Promise<SparkJob[]> {
-  try {
-    const { data, error } = await supabase
-      .from('spark_jobs')
-      .select('*')
-      .eq('status', 'queued')
-      .order('created_at', { ascending: true })
-      .limit(limit);
+export async function markJobRunning(jobId: string) {
+  const { error } = await supabase
+    .from("spark_jobs")
+    .update({
+      status: "running",
+      started_at: new Date().toISOString(),
+      error: null,
+    })
+    .eq("id", jobId);
 
-    if (error) {
-      logger.error('Error fetching pending jobs:', error);
-      return [];
-    }
-    
-    logger.info(`Found ${data?.length || 0} pending jobs`);
-    return data || [];
-  } catch (error) {
-    logger.error('Exception fetching pending jobs:', error);
-    return [];
-  }
+  if (error) throw error;
 }
 
-// Update job status
-export async function updateJobStatus(
-  jobId: string,
-  status: SparkJob['status'],
-  updates: Partial<Omit<SparkJob, 'id' | 'created_at' | 'status'>> = {}
-): Promise<boolean> {
-  try {
-    const { error } = await supabase
-      .from('spark_jobs')
-      .update({ status, ...updates })
-      .eq('id', jobId);
+export async function markJobDelivered(jobId: string, resultUrl: string, providerUsed: string) {
+  const { error } = await supabase
+    .from("spark_jobs")
+    .update({
+      status: "delivered",
+      finished_at: new Date().toISOString(),
+      result_url: resultUrl,
+      provider_used: providerUsed,
+      error: null,
+    })
+    .eq("id", jobId);
 
-    if (error) {
-      logger.error(`Error updating job ${jobId}:`, error);
-      return false;
-    }
-    
-    logger.info(`Job ${jobId} updated to status: ${status}`);
-    return true;
-  } catch (error) {
-    logger.error(`Exception updating job ${jobId}:`, error);
-    return false;
-  }
+  if (error) throw error;
 }
 
-// Mark job as running
-export async function markJobRunning(jobId: string): Promise<boolean> {
-  return updateJobStatus(jobId, 'running');
+export async function markJobFailed(jobId: string, message: string, providerUsed?: string) {
+  const { error } = await supabase
+    .from("spark_jobs")
+    .update({
+      status: "failed",
+      finished_at: new Date().toISOString(),
+      provider_used: providerUsed || null,
+      error: message.slice(0, 1500),
+    })
+    .eq("id", jobId);
+
+  if (error) throw error;
 }
 
-// Mark job as delivered with final URL
-export async function markJobDelivered(jobId: string, finalUrl: string): Promise<boolean> {
-  return updateJobStatus(jobId, 'delivered', { final_url: finalUrl });
-}
+export async function uploadFinalMp4(jobId: string, filePath: string): Promise<string> {
+  const storagePath = `spark/${jobId}/final.mp4`;
+  const fileBuffer = fs.readFileSync(filePath);
 
-// Mark job as failed with error message
-export async function markJobFailed(jobId: string, errorMessage: string): Promise<boolean> {
-  return updateJobStatus(jobId, 'failed', { error: errorMessage });
+  const { error: upErr } = await supabase.storage
+    .from(SUPABASE_BUCKET)
+    .upload(storagePath, fileBuffer, {
+      contentType: "video/mp4",
+      upsert: true,
+    });
+
+  if (upErr) throw upErr;
+
+  const { data } = supabase.storage.from(SUPABASE_BUCKET).getPublicUrl(storagePath);
+  if (!data?.publicUrl) throw new Error("PUBLIC_URL_MISSING");
+
+  return data.publicUrl;
 }
