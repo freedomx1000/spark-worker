@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 import pLimit from 'p-limit';
 import logger from './utils/logger';
-import { getPendingJobs, markJobRunning, markJobDelivered, markJobFailed, SparkJob, supabase } from './services/supabase'
+import { getPendingJobs, markJobRunning, markJobDelivered, markJobFailed, SparkJobRow, supabase } from './services/supabase'
 import { generatePlaceholderMp4 } from './services/videoGenerator';
 
 dotenv.config();
@@ -60,7 +60,7 @@ const MAX_CONCURRENT = parseInt(process.env.MAX_CONCURRENT_JOBS || '3');
 const limit = pLimit(MAX_CONCURRENT);
 let activeJobs = 0;
 
-async function processJob(job: SparkJob) {
+async function processJob(job: SparkJobRow) {
   activeJobs++;
   logger.info(`[Job ${job.id}] Starting processing (${activeJobs}/${MAX_CONCURRENT} active)`);
 
@@ -79,8 +79,7 @@ async function processJob(job: SparkJob) {
       logger.info(`[Job ${job.id}] Video generated at ${videoPath}`);
 
       // Mark as delivered with real video URL
-      await markJobDelivered(job.id, videoPath);
-      logger.info(`[Job ${job.id}] ✅ DRY RUN completed with real video`);
+      await markJobDelivered(job.id, videoPath, 'dry_run');      logger.info(`[Job ${job.id}] ✅ DRY RUN completed with real video`);
     } else {
       // Real mode: would call actual video generation APIs
       logger.info(`[Job ${job.id}] REAL MODE - Calling video generation APIs`);
