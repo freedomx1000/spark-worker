@@ -75,7 +75,7 @@ async function processJob(job: SparkJobRow) {
       logger.info(`[Job ${job.id}] Pack: ${job.pack_id}`);
 
       // Generate placeholder MP4 (2 seconds)
-      const videoPath = await generatePlaceholderMp4(job.id, job.prompt || '');
+      const videoPath = await generatePlaceholderMp4(job.id);
       logger.info(`[Job ${job.id}] Video generated at ${videoPath}`);
 
       // Mark as delivered with real video URL
