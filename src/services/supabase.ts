@@ -7,19 +7,23 @@ const SUPABASE_BUCKET = process.env.SUPABASE_BUCKET || "public-assets";
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-export type SparkJobRow = {
+exporexport type SparkJobRow = {
   id: string;
   status: "queued" | "running" | "delivered" | "failed";
-  pack: string | null;
+  pack_id: string | null;
+  prompt: string | null;
   priority: string | null;
   spec: any;
-  result_url?: string | null;
-  started_at?: string | null;
-  finished_at?: string | null;
-  provider_used?: string | null;
-  error?: string | null;
+  clips: any;
+  music_url: string | null;
+  final_url: string | null;
+  result_url: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+  provider_used: string | null;
+  error: string | null;
+  last_error: string | null;
 };
-
 export async function getPendingJobs(limit = 10): Promise<SparkJobRow[]> {
   const { data, error } = await supabase
     .from("spark_jobs")
