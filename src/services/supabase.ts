@@ -71,7 +71,7 @@ export async function markJobFailed(jobId: string, message: string, providerUsed
       status: "failed",
       finished_at: new Date().toISOString(),
       provider_used: providerUsed || null,
-      error: message.slice(0, 1500),
+      last_error: message.slice(0, 1500),
     })
     .eq("id", jobId);
 
@@ -95,4 +95,24 @@ export async function uploadFinalMp4(jobId: string, filePath: string): Promise<s
   if (!data?.publicUrl) throw new Error("PUBLIC_URL_MISSING");
 
   return data.publicUrl;
+
+  export async function uploadFileAndGetPublicUrl(params: {
+  bucket: string;
+  objectPath: string;
+  filePath: string;
+  contentType: string;
+}): Promise<string> {
+  const fileBuffer = fs.readFileSync(params.filePath);
+  const { error: upErr } = await supabase.storage
+    .from(params.bucket)
+    .upload(params.objectPath, fileBuffer, {
+      contentType: params.contentType,
+      upsert: true,
+    });
+  if (upErr) throw upErr;
+  
+  const { data } = supabase.storage.from(params.bucket).getPublicUrl(params.objectPath);
+  if (!data?.publicUrl) throw new Error("PUBLIC_URL_MISSING");
+  return data.publicUrl;
+}
 }
