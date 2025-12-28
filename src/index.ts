@@ -79,7 +79,7 @@ async function processJob(job: SparkJobRow) {
       logger.info(`[Job ${job.id}] Video generated at ${videoPath}`);
 
       // Mark as delivered with real video URL
-      await markJobDelivered(job.id, videoPath);      logger.info(`[Job ${job.id}] ✅ DRY RUN completed with real video`);
+      await markJobDelivered(job.id, videoPath, 'dry_run');      logger.info(`[Job ${job.id}] ✅ DRY RUN completed with real video`);
     } else {
       // Real mode: would call actual video generation APIs
       logger.info(`[Job ${job.id}] REAL MODE - Calling video generation APIs`);
