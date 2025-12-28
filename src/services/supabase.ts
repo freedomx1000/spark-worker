@@ -116,3 +116,26 @@ export async function uploadFinalMp4(jobId: string, filePath: string): Promise<s
   if (!data?.publicUrl) throw new Error("PUBLIC_URL_MISSING");
   return data.publicUrl;
 }
+
+export async function uploadMp4AndGetPublicUrl(jobId: string, filePath: string): Promise<string> {
+  const bytes = fs.readFileSync(filePath);
+  const objectPath = `spark/${jobId}/final.mp4`;
+
+  const up = await supabase.storage
+    .from(SUPABASE_BUCKET)
+    .upload(objectPath, bytes, {
+      upsert: true,
+      contentType: "video/mp4",
+      cacheControl: "3600",
+    });
+
+  if (up.error) throw new Error(`Storage upload error: ${up.error.message}`);
+
+  const pub = supabase.storage.from(SUPABASE_BUCKET).getPublicUrl(objectPath);
+  const url = pub.data.publicUrl;
+
+  if (!url) throw new Error("Storage getPublicUrl returned empty url");
+
+  return url;
+}
+
