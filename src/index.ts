@@ -1,10 +1,57 @@
 import dotenv from 'dotenv';
 import pLimit from 'p-limit';
 import logger from './utils/logger';
-import { getPendingJobs, markJobRunning, markJobDelivered, markJobFailed, SparkJob } from './services/supabase';
+import { getPendingJobs, markJobRunning, markJobDelivered, markJobFailed, SparkJob } from './services/supabase';, supabase
 import { generatePlaceholderMp4 } from './services/videoGenerator';
 
 dotenv.config();
+
+// ============ REMESA 18.3.2: Global error & signal handlers ============
+process.on('unhandledRejection', async (reason: any) => {
+  const mem = process.memoryUsage();
+  const uptime = process.uptime();
+  const errMsg = `UNHANDLED_REJECTION: ${reason?.stack || reason} | Memory: ${Math.round(mem.heapUsed / 1024 / 1024)}MB / ${Math.round(mem.heapTotal / 1024 / 1024)}MB | Uptime: ${Math.round(uptime)}s`;
+  logger.error(errMsg);
+  // Persist to last_error (best effort)
+  try {
+    await supabase.from('spark_jobs').update({ last_error: errMsg.slice(0, 1500) }).eq('status', 'running');
+  } catch {}
+});
+
+process.on('uncaughtException', async (err: Error) => {
+  const mem = process.memoryUsage();
+  const uptime = process.uptime();
+  const errMsg = `UNCAUGHT_EXCEPTION: ${err.stack} | Memory: ${Math.round(mem.heapUsed / 1024 / 1024)}MB / ${Math.round(mem.heapTotal / 1024 / 1024)}MB | Uptime: ${Math.round(uptime)}s`;
+  logger.error(errMsg);
+  // Persist to last_error (best effort)
+  try {
+    await supabase.from('spark_jobs').update({ last_error: errMsg.slice(0, 1500) }).eq('status', 'running');
+  } catch {}
+  process.exit(1);
+});
+
+process.on('SIGTERM', async () => {
+  const mem = process.memoryUsage();
+  const uptime = process.uptime();
+  const errMsg = `SIGTERM received | Memory: ${Math.round(mem.heapUsed / 1024 / 1024)}MB / ${Math.round(mem.heapTotal / 1024 / 1024)}MB | Uptime: ${Math.round(uptime)}s`;
+  logger.info(errMsg);
+  try {
+    await supabase.from('spark_jobs').update({ last_error: 'SIGTERM' }).eq('status', 'running');
+  } catch {}
+  process.exit(0);
+});
+
+process.on('SIGINT', async () => {
+  const mem = process.memoryUsage();
+  const uptime = process.uptime();
+  const errMsg = `SIGINT received | Memory: ${Math.round(mem.heapUsed / 1024 / 1024)}MB / ${Math.round(mem.heapTotal / 1024 / 1024)}MB | Uptime: ${Math.round(uptime)}s`;
+  logger.info(errMsg);
+  try {
+    await supabase.from('spark_jobs').update({ last_error: 'SIGINT' }).eq('status', 'running');
+  } catch {}
+  process.exit(0);
+});
+// ============ END: Global error & signal handlers ============
 
 const DRY_RUN = process.env.DRY_RUN === 'true';
 const POLL_INTERVAL = parseInt(process.env.POLL_INTERVAL_MS || '5000');
