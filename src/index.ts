@@ -83,7 +83,35 @@ async function processJob(job: SparkJobRow) {
         logger.info(`[Job ${job.id}] Video uploaded. Public URL: ${publicUrl}`);
 
       // Mark as delivered with real video URL
-      await markJobDelivered(job.id, publicUrl, 'dry_run');      logger.info(`[Job ${job.id}] ✅ DRY RUN completed with real video`);
+      await markJobDelivered(job.id, publicUrl, 'dry_run');
+
+      try {
+        const { notifyAi360plusDelivery } = await import("./services/ai360plusHome");
+
+        if (!job.activation_id) {
+          logger.warn(
+            `[Job ${job.id}] Missing activation_id, cannot sync to activations`
+          );
+        } else {
+          await notifyAi360plusDelivery({
+            activation_id: job.activation_id,
+            spark_job_id: job.id,
+            result_url: publicUrl,
+            provider_used: "dry_run",
+            finished_at: new Date().toISOString(),
+          });
+
+          logger.info(
+            `✅ [Job ${job.id}] Synced delivery to ai360plus-home activations`
+          );
+        }
+      } catch (e: any) {
+        logger.error(
+          `⚠️ [Job ${job.id}] Sync to ai360plus-home failed: ${e?.message}`
+        );
+      }
+
+      logger.info(`[Job ${job.id}] ✅ DRY RUN completed with real video`);
     } else {
       // Real mode: would call actual video generation APIs
       logger.info(`[Job ${job.id}] REAL MODE - Calling video generation APIs`);
