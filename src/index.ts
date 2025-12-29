@@ -80,8 +80,7 @@ async function processJob(job: SparkJobRow) {
       
         // REMESA 18.7: Upload MP4 to Supabase Storage and get public URL
         logger.info(`[Job ${job.id}] Uploading video to Supabase Storage...`);
-        const publicUrl = await uploadMp4AndGetPublicUrl(videoPath, job.id);
-        logger.info(`[Job ${job.id}] Video uploaded. Public URL: ${publicUrl}`);
+      const publicUrl = await uploadMp4AndGetPublicUrl(job.id, videoPath);        logger.info(`[Job ${job.id}] Video uploaded. Public URL: ${publicUrl}`);
 
       // Mark as delivered with real video URL
       await markJobDelivered(job.id, publicUrl, 'dry_run');
