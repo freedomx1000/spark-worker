@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import fs from "node:fs";
+import logger from '../utils/logger';
 
 const SUPABASE_URL = process.env.SUPABASE_URL!;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -119,8 +120,10 @@ export async function uploadFinalMp4(jobId: string, filePath: string): Promise<s
 }
 
 export async function uploadMp4AndGetPublicUrl(jobId: string, filePath: string): Promise<string> {
+  logger.info(`[uploadMp4] START jobId=${jobId} filePath=${filePath}`);
   const bytes = fs.readFileSync(filePath);
   const objectPath = `spark/${jobId}/final.mp4`;
+  logger.info(`[uploadMp4] bucket=${SUPABASE_BUCKET} path=${objectPath} size=${bytes.length} bytes`);
 
   const up = await supabase.storage
     .from(SUPABASE_BUCKET)
@@ -130,13 +133,15 @@ export async function uploadMp4AndGetPublicUrl(jobId: string, filePath: string):
       cacheControl: "3600",
     });
 
-  if (up.error) throw new Error(`Storage upload error: ${up.error.message}`);
+  if (up.error) {
+    logger.error(`[uploadMp4] Upload FAILED:`, JSON.stringify(up.error, null, 2));
+    throw new Error(`Storage upload error: ${up.error.message}`);
+  }
+  logger.info(`[uploadMp4] Upload OK`);
 
   const pub = supabase.storage.from(SUPABASE_BUCKET).getPublicUrl(objectPath);
   const url = pub.data.publicUrl;
-
   if (!url) throw new Error("Storage getPublicUrl returned empty url");
-
+  logger.info(`[uploadMp4] END publicUrl=${url}`);
   return url;
 }
-
