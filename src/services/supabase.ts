@@ -9,6 +9,7 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 export type SparkJobRow = {
   id: string;
+    activation_id: string | null;
   status: "queued" | "running" | "delivered" | "failed";
   pack_id: string | null;
   prompt: string | null;
